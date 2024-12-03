@@ -42,6 +42,6 @@ public class ShellyAPIService {
             throw new Exception("Error al obtener el estado del dispositivo. Código: " + response.statusCode());
         }
 
-        return JSONUtils.parseResponse(response.body());
+        return JSONUtils.getInstance().parseResponse(response.body());
     }
 }

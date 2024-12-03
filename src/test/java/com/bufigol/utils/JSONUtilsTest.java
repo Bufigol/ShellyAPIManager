@@ -17,7 +17,7 @@ public class JSONUtilsTest {
         String jsonString = "{\"isok\":true,\"data\":{\"name\":\"test\",\"value\":123}}";
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(jsonString);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
@@ -32,7 +32,7 @@ public class JSONUtilsTest {
         String invalidJson = "{invalid json}";
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(invalidJson);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(invalidJson);
 
         // Assert
         assertFalse(response.isIsok());
@@ -46,7 +46,7 @@ public class JSONUtilsTest {
         String jsonString = "{\"isok\":true}";
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(jsonString);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
@@ -61,7 +61,7 @@ public class JSONUtilsTest {
         JsonValue jsonValue = Json.createReader(new java.io.StringReader(jsonString)).readValue();
 
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(jsonValue);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
 
         // Assert
         assertEquals("test", result.get("name"));
@@ -75,7 +75,7 @@ public class JSONUtilsTest {
     @Test
     void convertJsonValueToMap_NullValue_ReturnsEmptyMap() {
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(null);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(null);
 
         // Assert
         assertNotNull(result);
@@ -89,7 +89,7 @@ public class JSONUtilsTest {
         JsonValue jsonValue = Json.createReader(new java.io.StringReader(jsonString)).readValue();
 
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(jsonValue);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
 
         // Assert
         assertNotNull(result);
@@ -100,26 +100,26 @@ public class JSONUtilsTest {
     void convertJsonValueToJavaObject_AllTypes_Success() {
         // Test String
         JsonValue stringValue = Json.createValue("test");
-        assertEquals("test", JSONUtils.convertJsonValueToJavaObject(stringValue));
+        assertEquals("test", JSONUtils.getInstance().convertJsonValueToJavaObject(stringValue));
 
         // Test Integer
         JsonValue intValue = Json.createValue(123);
-        assertEquals(123.0, JSONUtils.convertJsonValueToJavaObject(intValue));
+        assertEquals(123.0, JSONUtils.getInstance().convertJsonValueToJavaObject(intValue));
 
         // Test Double
         JsonValue doubleValue = Json.createValue(123.45);
-        assertEquals(123.45, JSONUtils.convertJsonValueToJavaObject(doubleValue));
+        assertEquals(123.45, JSONUtils.getInstance().convertJsonValueToJavaObject(doubleValue));
 
         // Test Boolean
         JsonValue boolValue = JsonValue.TRUE;
-        assertEquals(true, JSONUtils.convertJsonValueToJavaObject(boolValue));
+        assertEquals(true, JSONUtils.getInstance().convertJsonValueToJavaObject(boolValue));
 
         // Test Null
-        assertNull(JSONUtils.convertJsonValueToJavaObject(JsonValue.NULL));
+        assertNull(JSONUtils.getInstance().convertJsonValueToJavaObject(JsonValue.NULL));
 
         // Test Array
         JsonValue arrayValue = Json.createArrayBuilder().add(1).add(2).add(3).build();
-        Object arrayResult = JSONUtils.convertJsonValueToJavaObject(arrayValue);
+        Object arrayResult = JSONUtils.getInstance().convertJsonValueToJavaObject(arrayValue);
         assertInstanceOf(List.class, arrayResult);
         assertEquals(3, ((List<?>) arrayResult).size());
 
@@ -127,7 +127,7 @@ public class JSONUtilsTest {
         JsonValue objectValue = Json.createObjectBuilder()
                 .add("key", "value")
                 .build();
-        Object objectResult = JSONUtils.convertJsonValueToJavaObject(objectValue);
+        Object objectResult = JSONUtils.getInstance().convertJsonValueToJavaObject(objectValue);
         assertInstanceOf(Map.class, objectResult);
         assertEquals("value", ((Map<?,?>) objectResult).get("key"));
     }
@@ -139,7 +139,7 @@ public class JSONUtilsTest {
         JsonValue jsonValue = Json.createReader(new java.io.StringReader(complexJson)).readValue();
 
         // Act
-        Object result = JSONUtils.convertJsonValueToJavaObject(jsonValue);
+        Object result = JSONUtils.getInstance().convertJsonValueToJavaObject(jsonValue);
 
         // Assert
         assertInstanceOf(Map.class, result);
