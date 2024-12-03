@@ -1,0 +1,8 @@
+{
+  "auth_key": "your_auth_key",
+  "base_url": "https://shelly-141-eu.shelly.cloud",
+  "devices": {
+    "living_room": "device_id_1",
+    "kitchen": "device_id_2"
+  }
+}
