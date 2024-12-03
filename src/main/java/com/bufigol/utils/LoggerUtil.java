@@ -44,7 +44,7 @@ public class LoggerUtil {
     private String determineLogPath() {
         try {
             // Aquí usaríamos la clase de configuración para obtener la ruta
-            String configPath = JSONUtils.readConfigValue(CONFIG_PROPERTY_NAME);
+            String configPath = JSONUtils.getInstance().readConfigValue(CONFIG_PROPERTY_NAME);
 
             if (configPath != null && !configPath.isEmpty()) {
                 return configPath;
@@ -66,7 +66,7 @@ public class LoggerUtil {
     private void saveDefaultPath() {
         try {
             // Aquí usaríamos la clase de configuración para guardar la ruta
-            JSONUtils.saveConfigValue(CONFIG_PROPERTY_NAME, DEFAULT_LOG_PATH);
+            JSONUtils.getInstance().saveConfigValue(CONFIG_PROPERTY_NAME, DEFAULT_LOG_PATH);
         } catch (Exception e) {
             System.err.println("No se pudo guardar la ruta por defecto en la configuración: " + e.getMessage());
         }
