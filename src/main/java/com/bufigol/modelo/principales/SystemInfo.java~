@@ -1,0 +1,42 @@
+package com.bufigol.modelo.principales;
+public class SystemInfo {
+    private AvailableUpdates availableUpdates;
+    private String mac;
+    private boolean restartRequired;
+    private LocalTime time;
+    private LocalDateTime timestamp;
+    private Duration uptime;
+    private int ramSize;
+    private int ramFree;
+    private int fsSize;
+    private int fsFree;
+    private int cfgRev;
+    private int kvsRev;
+    private int scheduleRev;
+    private int webhookRev;
+    private int resetReason;
+
+    public SystemInfo(AvailableUpdates updates, String mac, boolean restart, String timeStr,
+                      long unixtime, int uptime, int ramSize, int ramFree, int fsSize,
+                      int fsFree, int cfgRev, int kvsRev, int scheduleRev, int webhookRev,
+                      int resetReason) {
+        this.availableUpdates = updates;
+        this.mac = mac;
+        this.restartRequired = restart;
+        this.time = LocalTime.parse(timeStr);
+        this.timestamp = LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(unixtime),
+                ZoneId.systemDefault()
+        );
+        this.uptime = Duration.ofSeconds(uptime);
+        this.ramSize = ramSize;
+        this.ramFree = ramFree;
+        this.fsSize = fsSize;
+        this.fsFree = fsFree;
+        this.cfgRev = cfgRev;
+        this.kvsRev = kvsRev;
+        this.scheduleRev = scheduleRev;
+        this.webhookRev = webhookRev;
+        this.resetReason = resetReason;
+    }
+}

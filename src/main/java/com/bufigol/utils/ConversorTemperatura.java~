@@ -1,0 +1,4 @@
+package com.bufigol.utils;
+
+public class ConversorTemperatura {
+}
