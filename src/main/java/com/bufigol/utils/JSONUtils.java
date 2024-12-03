@@ -39,7 +39,7 @@ public class JSONUtils {
         }
     }
 
-    private static Map<String, Object> convertJsonValueToMap(JsonValue value) {
+    public static Map<String, Object> convertJsonValueToMap(JsonValue value) {
         Map<String, Object> result = new HashMap<>();
 
         if (value == null || value.getValueType() == JsonValue.ValueType.NULL) {
@@ -68,7 +68,7 @@ public class JSONUtils {
         return result;
     }
 
-    private static Object convertJsonValueToJavaObject(JsonValue value) {
+    public static Object convertJsonValueToJavaObject(JsonValue value) {
         if (value == null || value.getValueType() == JsonValue.ValueType.NULL) {
             return null;
         }
