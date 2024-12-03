@@ -46,7 +46,6 @@ public class JSONUtils implements INT_JSONUtils {
         return configPath;
     }
 
-    @Override
     public JSONResponse parseResponse(String jsonString) {
         try (JsonReader jsonReader = Json.createReader(new StringReader(jsonString))) {
             JsonObject jsonObject = jsonReader.readObject();
@@ -64,7 +63,12 @@ public class JSONUtils implements INT_JSONUtils {
 
             return jsonResponse;
         } catch (Exception e) {
-            throw new ConfigurationException("Error parsing JSON response: " + e.getMessage(), e);
+            JSONResponse errorResponse = new JSONResponse();
+            errorResponse.setIsok(false);
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("error", "Error parsing JSON response: " + e.getMessage());
+            errorResponse.setData(errorData);
+            return errorResponse;
         }
     }
 
