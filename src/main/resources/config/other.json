@@ -1,0 +1,21 @@
+{
+  "electricity_price": {
+    "business_average": 0.131
+  },
+  "log": {
+    "level": "info",
+    "file_path": "logs/config_errors.log",
+    "max_size": 10000000,
+    "retention_days": 30
+  },
+  "update": {
+    "interval": 3600,
+    "retry_count": 3,
+    "retry_delay": 60
+  },
+  "system": {
+    "timezone": "America/Santiago",
+    "locale": "es-CL",
+    "date_format": "yyyy-MM-dd HH:mm:ss"
+  }
+}
