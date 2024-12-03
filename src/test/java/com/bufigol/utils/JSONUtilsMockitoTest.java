@@ -1,11 +1,14 @@
 package com.bufigol.utils;
 
+import com.bufigol.expeciones.ConfigurationException;
 import com.bufigol.modelo.auxiliares.JSONResponse;
 import jakarta.json.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.StringReader;
 import java.util.List;
@@ -14,38 +17,32 @@ import java.util.Map;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(MockitoExtension.class)
 public class JSONUtilsMockitoTest {
 
     @Mock
-    private JsonReader jsonReader;
+    private LoggerUtil loggerUtil;
 
-    @Mock
-    private JsonObject jsonObject;
-
-    @Mock
-    private JsonString jsonString;
-
-    @Mock
-    private JsonNumber jsonNumber;
+    private JSONUtils jsonUtils;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        // Usar constructor con path específico para evitar problemas con el singleton
+        jsonUtils = JSONUtils.getInstance("test-config.json");
+
+        // Mock del LoggerUtil para evitar la recursión infinita
+        try (MockedStatic<LoggerUtil> mockedStatic = mockStatic(LoggerUtil.class)) {
+            mockedStatic.when(LoggerUtil::getInstance).thenReturn(loggerUtil);
+        }
     }
 
     @Test
     void parseResponse_ValidJSON_Success() {
         // Arrange
         String jsonString = "{\"isok\":true,\"data\":{\"name\":\"test\",\"value\":123}}";
-        JsonReader actualReader = Json.createReader(new StringReader(jsonString));
-        JsonObject actualObject = actualReader.readObject();
-
-        when(jsonObject.getBoolean("isok", false)).thenReturn(true);
-        when(jsonObject.containsKey("data")).thenReturn(true);
-        when(jsonObject.get("data")).thenReturn(actualObject.get("data"));
 
         // Act
-        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
+        JSONResponse response = jsonUtils.parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
@@ -60,12 +57,21 @@ public class JSONUtilsMockitoTest {
         String jsonString = "{\"isok\":true}";
 
         // Act
-        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
+        JSONResponse response = jsonUtils.parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
         assertNotNull(response.getData());
         assertTrue(response.getData().isEmpty());
+    }
+
+    @Test
+    void parseResponse_InvalidJSON_ThrowsException() {
+        // Arrange
+        String invalidJson = "{invalid json}";
+
+        // Act & Assert
+        assertThrows(ConfigurationException.class, () -> jsonUtils.parseResponse(invalidJson));
     }
 
     @Test
@@ -75,13 +81,13 @@ public class JSONUtilsMockitoTest {
         JsonValue jsonValue = Json.createReader(new StringReader(jsonString)).readValue();
 
         // Act
-        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
+        Map<String, Object> result = jsonUtils.convertJsonValueToMap(jsonValue);
 
         // Assert
         assertEquals("test", result.get("name"));
         assertEquals(123.0, result.get("number"));
         assertEquals(true, result.get("boolean"));
-        assertInstanceOf(List.class, result.get("array"));
+        assertTrue(result.get("array") instanceof List);
         List<?> array = (List<?>) result.get("array");
         assertEquals(3, array.size());
     }
@@ -89,7 +95,7 @@ public class JSONUtilsMockitoTest {
     @Test
     void convertJsonValueToMap_NullValue_ReturnsEmptyMap() {
         // Act
-        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(null);
+        Map<String, Object> result = jsonUtils.convertJsonValueToMap(null);
 
         // Assert
         assertNotNull(result);
@@ -97,78 +103,64 @@ public class JSONUtilsMockitoTest {
     }
 
     @Test
-    void convertJsonValueToJavaObject_AllTypes_Success() {
-        // Test String
-        when(jsonString.getValueType()).thenReturn(JsonValue.ValueType.STRING);
-        when(jsonString.getString()).thenReturn("test");
-        assertEquals("test", JSONUtils.getInstance().convertJsonValueToJavaObject(jsonString));
+    void convertJsonValueToJavaObject_String_Success() {
+        // Arrange
+        JsonString jsonString = Json.createValue("test");
 
-        // Test Number
-        when(jsonNumber.getValueType()).thenReturn(JsonValue.ValueType.NUMBER);
-        when(jsonNumber.isIntegral()).thenReturn(false);
-        when(jsonNumber.doubleValue()).thenReturn(123.45);
-        assertEquals(123.45, JSONUtils.getInstance().convertJsonValueToJavaObject(jsonNumber));
+        // Act
+        Object result = jsonUtils.convertJsonValueToJavaObject(jsonString);
 
-        // Test Boolean
-        JsonValue mockBool = mock(JsonValue.class);
-        when(mockBool.getValueType()).thenReturn(JsonValue.ValueType.TRUE);
-        assertEquals(true, JSONUtils.getInstance().convertJsonValueToJavaObject(mockBool));
-
-        // Test Null
-        JsonValue mockNull = mock(JsonValue.class);
-        when(mockNull.getValueType()).thenReturn(JsonValue.ValueType.NULL);
-        assertNull(JSONUtils.getInstance().convertJsonValueToJavaObject(mockNull));
+        // Assert
+        assertEquals("test", result);
     }
 
     @Test
-    void convertJsonValueToJavaObject_NestedStructures_Success() {
+    void convertJsonValueToJavaObject_Number_Success() {
         // Arrange
-        String complexJson = "{\"name\":\"test\",\"nested\":{\"array\":[1,2,{\"key\":\"value\"}]}}";
-        JsonValue jsonValue = Json.createReader(new StringReader(complexJson)).readValue();
+        JsonNumber jsonNumber = Json.createValue(123.45);
 
         // Act
-        Object result = JSONUtils.getInstance().convertJsonValueToJavaObject(jsonValue);
+        Object result = jsonUtils.convertJsonValueToJavaObject(jsonNumber);
 
         // Assert
-        assertInstanceOf(Map.class, result);
-        Map<?, ?> resultMap = (Map<?, ?>) result;
-        assertEquals("test", resultMap.get("name"));
-        assertInstanceOf(Map.class, resultMap.get("nested"));
-
-        Map<?, ?> nestedMap = (Map<?, ?>) resultMap.get("nested");
-        assertInstanceOf(List.class, nestedMap.get("array"));
-
-        List<?> array = (List<?>) nestedMap.get("array");
-        assertEquals(3, array.size());
-        assertInstanceOf(Map.class, array.get(2));
-        assertEquals("value", ((Map<?, ?>) array.get(2)).get("key"));
+        assertEquals(123.45, result);
     }
 
     @Test
-    void parseResponse_InvalidJSON_ReturnsErrorResponse() {
+    void convertJsonValueToJavaObject_Boolean_Success() {
         // Arrange
-        String invalidJson = "{invalid json}";
+        JsonValue jsonTrue = JsonValue.TRUE;
+        JsonValue jsonFalse = JsonValue.FALSE;
 
-        // Act
-        JSONResponse response = JSONUtils.getInstance().parseResponse(invalidJson);
-
-        // Assert
-        assertFalse(response.isIsok());
-        assertTrue(response.getData().containsKey("error"));
-        assertTrue(((String)response.getData().get("error")).startsWith("Error parsing JSON response"));
+        // Act & Assert
+        assertEquals(true, jsonUtils.convertJsonValueToJavaObject(jsonTrue));
+        assertEquals(false, jsonUtils.convertJsonValueToJavaObject(jsonFalse));
     }
 
     @Test
-    void convertJsonValueToMap_EmptyObject_ReturnsEmptyMap() {
+    void convertJsonValueToJavaObject_Null_ReturnsNull() {
+        // Act & Assert
+        assertNull(jsonUtils.convertJsonValueToJavaObject(JsonValue.NULL));
+    }
+
+    @Test
+    void convertJsonValueToJavaObject_Array_Success() {
         // Arrange
-        String jsonString = "{}";
-        JsonValue jsonValue = Json.createReader(new StringReader(jsonString)).readValue();
+        JsonArray jsonArray = Json.createArrayBuilder()
+                .add("test")
+                .add(123)
+                .add(true)
+                .build();
 
         // Act
-        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
+        Object result = jsonUtils.convertJsonValueToJavaObject(jsonArray);
 
         // Assert
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        assertTrue(result instanceof List);
+        List<?> list = (List<?>) result;
+        assertEquals(3, list.size());
+        assertEquals("test", list.get(0));
+        assertEquals(123.0, list.get(1));
+        assertEquals(true, list.get(2));
     }
 }

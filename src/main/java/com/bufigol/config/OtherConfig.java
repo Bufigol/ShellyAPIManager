@@ -6,6 +6,7 @@ import com.bufigol.utils.JSONUtils;
 
 import java.net.URL;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -50,17 +51,14 @@ public class OtherConfig implements INT_Configuracion {
      * Constructor por defecto que inicializa la configuración con la ruta estándar.
      */
     public OtherConfig() {
-        URL resourceUrl = OtherConfig.class.getClassLoader().getResource(CONFIG_FOLDER + File.separator + CONFIG_FILE_NAME);
-        if (resourceUrl == null) {
-            throw new ConfigurationException("No se pudo encontrar el archivo de configuración other.json en el classpath");
-        }
-        this.configPath = resourceUrl.getPath();
+        String configDirPath = System.getProperty("config.dir", "config");
+        Path configPath = Path.of(configDirPath, CONFIG_FILE_NAME);
+        this.configPath = configPath.toString();
         this.jsonUtils = JSONUtils.getInstance();
         this.lock = new ReentrantReadWriteLock();
         this.configuration = new HashMap<>();
         this.loaded = false;
     }
-
     /**
      * Constructor que permite especificar un nombre de archivo personalizado.
      * @param configFileName nombre del archivo de configuración

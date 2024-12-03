@@ -7,6 +7,7 @@ import jakarta.json.*;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,11 +17,11 @@ import java.util.Map;
 public class JSONUtils implements INT_JSONUtils {
 
     private static JSONUtils instance;
-    private final String configPath;
+    private final Path configPath;
     private static final String DEFAULT_CONFIG_PATH = "config/config.json";
 
     private JSONUtils(String configPath) {
-        this.configPath = configPath;
+        this.configPath = Paths.get(configPath).normalize();
         createConfigDirectoryIfNotExists();
     }
 
@@ -43,10 +44,9 @@ public class JSONUtils implements INT_JSONUtils {
     }
 
     public String getConfigPath() {
-        return configPath;
+        return configPath.toString();
     }
 
-    @Override
     public JSONResponse parseResponse(String jsonString) {
         try (JsonReader jsonReader = Json.createReader(new StringReader(jsonString))) {
             JsonObject jsonObject = jsonReader.readObject();
@@ -64,7 +64,12 @@ public class JSONUtils implements INT_JSONUtils {
 
             return jsonResponse;
         } catch (Exception e) {
-            throw new ConfigurationException("Error parsing JSON response: " + e.getMessage(), e);
+            JSONResponse errorResponse = new JSONResponse();
+            errorResponse.setIsok(false);
+            Map<String, Object> errorData = new HashMap<>();
+            errorData.put("error", "Error parsing JSON response: " + e.getMessage());
+            errorResponse.setData(errorData);
+            return errorResponse;
         }
     }
 
@@ -127,7 +132,11 @@ public class JSONUtils implements INT_JSONUtils {
     @Override
     public Map<String, Object> readConfigFile(String filePath) {
         try {
-            String content = Files.readString(Paths.get(filePath));
+            Path path = Paths.get(filePath).normalize();
+            if (!Files.exists(path)) {
+                throw new ConfigurationException("El archivo de configuración no existe: " + path);
+            }
+            String content = Files.readString(path);
             try (JsonReader jsonReader = Json.createReader(new StringReader(content))) {
                 JsonObject jsonObject = jsonReader.readObject();
                 return convertJsonValueToMap(jsonObject);
@@ -145,7 +154,7 @@ public class JSONUtils implements INT_JSONUtils {
     @Override
     public String readConfigValue(String propertyName, String defaultValue) {
         try {
-            Map<String, Object> config = readConfigFile(this.configPath);
+            Map<String, Object> config = readConfigFile(this.configPath.toString());
             Object value = config.get(propertyName);
             return value != null ? value.toString() : defaultValue;
         } catch (Exception e) {
@@ -157,25 +166,28 @@ public class JSONUtils implements INT_JSONUtils {
     public void saveConfigValue(String propertyName, String value) {
         Map<String, Object> config;
         try {
-            config = readConfigFile(this.configPath);
+            config = readConfigFile(this.configPath.toString());
         } catch (Exception e) {
             config = new HashMap<>();
         }
 
         config.put(propertyName, value);
-        saveConfigFile(config, this.configPath);
+        saveConfigFile(config, this.configPath.toString());
     }
 
     @Override
     public void saveConfigFile(Map<String, Object> config, String filePath) {
-        try (JsonWriter jsonWriter = Json.createWriter(Files.newBufferedWriter(Paths.get(filePath)))) {
-            JsonObjectBuilder builder = Json.createObjectBuilder();
+        try {
+            Path path = Paths.get(filePath).normalize();
+            createParentDirectories(path);
 
-            for (Map.Entry<String, Object> entry : config.entrySet()) {
-                addValueToBuilder(builder, entry.getKey(), entry.getValue());
+            try (JsonWriter jsonWriter = Json.createWriter(Files.newBufferedWriter(path))) {
+                JsonObjectBuilder builder = Json.createObjectBuilder();
+                for (Map.Entry<String, Object> entry : config.entrySet()) {
+                    addValueToBuilder(builder, entry.getKey(), entry.getValue());
+                }
+                jsonWriter.writeObject(builder.build());
             }
-
-            jsonWriter.writeObject(builder.build());
         } catch (IOException e) {
             throw new ConfigurationException("Error saving config file: " + e.getMessage(), e);
         }
@@ -244,7 +256,7 @@ public class JSONUtils implements INT_JSONUtils {
     @Override
     public boolean hasProperty(String propertyName) {
         try {
-            Map<String, Object> config = readConfigFile(this.configPath);
+            Map<String, Object> config = readConfigFile(this.configPath.toString());
             return config.containsKey(propertyName);
         } catch (Exception e) {
             return false;
@@ -254,10 +266,10 @@ public class JSONUtils implements INT_JSONUtils {
     @Override
     public boolean removeProperty(String propertyName) {
         try {
-            Map<String, Object> config = readConfigFile(this.configPath);
+            Map<String, Object> config = readConfigFile(this.configPath.toString());
             boolean removed = config.remove(propertyName) != null;
             if (removed) {
-                saveConfigFile(config, this.configPath);
+                saveConfigFile(config, this.configPath.toString());
             }
             return removed;
         } catch (Exception e) {
@@ -268,7 +280,11 @@ public class JSONUtils implements INT_JSONUtils {
     @Override
     public boolean validateConfigFile(String filePath) {
         try {
-            String content = Files.readString(Paths.get(filePath));
+            Path path = Paths.get(filePath).normalize();
+            if (!Files.exists(path)) {
+                return false;
+            }
+            String content = Files.readString(path);
             try (JsonReader jsonReader = Json.createReader(new StringReader(content))) {
                 jsonReader.readObject();
                 return true;
@@ -300,12 +316,21 @@ public class JSONUtils implements INT_JSONUtils {
         return result;
     }
 
+    private void createParentDirectories(Path path) throws IOException {
+        Path parent = path.getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
+    }
+
     private void createConfigDirectoryIfNotExists() {
-        File configDir = new File(configPath).getParentFile();
-        if (configDir != null && !configDir.exists()) {
-            if (!configDir.mkdirs()) {
-                throw new ConfigurationException("Could not create config directory: " + configDir.getAbsolutePath());
+        try {
+            Path parent = configPath.getParent();
+            if (parent != null && !Files.exists(parent)) {
+                Files.createDirectories(parent);
             }
+        } catch (IOException e) {
+            throw new ConfigurationException("Could not create config directory: " + e.getMessage(), e);
         }
     }
 }
