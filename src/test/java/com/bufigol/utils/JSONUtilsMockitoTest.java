@@ -45,7 +45,7 @@ public class JSONUtilsMockitoTest {
         when(jsonObject.get("data")).thenReturn(actualObject.get("data"));
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(jsonString);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
@@ -60,7 +60,7 @@ public class JSONUtilsMockitoTest {
         String jsonString = "{\"isok\":true}";
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(jsonString);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(jsonString);
 
         // Assert
         assertTrue(response.isIsok());
@@ -75,7 +75,7 @@ public class JSONUtilsMockitoTest {
         JsonValue jsonValue = Json.createReader(new StringReader(jsonString)).readValue();
 
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(jsonValue);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
 
         // Assert
         assertEquals("test", result.get("name"));
@@ -89,7 +89,7 @@ public class JSONUtilsMockitoTest {
     @Test
     void convertJsonValueToMap_NullValue_ReturnsEmptyMap() {
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(null);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(null);
 
         // Assert
         assertNotNull(result);
@@ -101,23 +101,23 @@ public class JSONUtilsMockitoTest {
         // Test String
         when(jsonString.getValueType()).thenReturn(JsonValue.ValueType.STRING);
         when(jsonString.getString()).thenReturn("test");
-        assertEquals("test", JSONUtils.convertJsonValueToJavaObject(jsonString));
+        assertEquals("test", JSONUtils.getInstance().convertJsonValueToJavaObject(jsonString));
 
         // Test Number
         when(jsonNumber.getValueType()).thenReturn(JsonValue.ValueType.NUMBER);
         when(jsonNumber.isIntegral()).thenReturn(false);
         when(jsonNumber.doubleValue()).thenReturn(123.45);
-        assertEquals(123.45, JSONUtils.convertJsonValueToJavaObject(jsonNumber));
+        assertEquals(123.45, JSONUtils.getInstance().convertJsonValueToJavaObject(jsonNumber));
 
         // Test Boolean
         JsonValue mockBool = mock(JsonValue.class);
         when(mockBool.getValueType()).thenReturn(JsonValue.ValueType.TRUE);
-        assertEquals(true, JSONUtils.convertJsonValueToJavaObject(mockBool));
+        assertEquals(true, JSONUtils.getInstance().convertJsonValueToJavaObject(mockBool));
 
         // Test Null
         JsonValue mockNull = mock(JsonValue.class);
         when(mockNull.getValueType()).thenReturn(JsonValue.ValueType.NULL);
-        assertNull(JSONUtils.convertJsonValueToJavaObject(mockNull));
+        assertNull(JSONUtils.getInstance().convertJsonValueToJavaObject(mockNull));
     }
 
     @Test
@@ -127,7 +127,7 @@ public class JSONUtilsMockitoTest {
         JsonValue jsonValue = Json.createReader(new StringReader(complexJson)).readValue();
 
         // Act
-        Object result = JSONUtils.convertJsonValueToJavaObject(jsonValue);
+        Object result = JSONUtils.getInstance().convertJsonValueToJavaObject(jsonValue);
 
         // Assert
         assertInstanceOf(Map.class, result);
@@ -150,7 +150,7 @@ public class JSONUtilsMockitoTest {
         String invalidJson = "{invalid json}";
 
         // Act
-        JSONResponse response = JSONUtils.parseResponse(invalidJson);
+        JSONResponse response = JSONUtils.getInstance().parseResponse(invalidJson);
 
         // Assert
         assertFalse(response.isIsok());
@@ -165,7 +165,7 @@ public class JSONUtilsMockitoTest {
         JsonValue jsonValue = Json.createReader(new StringReader(jsonString)).readValue();
 
         // Act
-        Map<String, Object> result = JSONUtils.convertJsonValueToMap(jsonValue);
+        Map<String, Object> result = JSONUtils.getInstance().convertJsonValueToMap(jsonValue);
 
         // Assert
         assertNotNull(result);

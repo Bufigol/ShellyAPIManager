@@ -1,0 +1,10 @@
+{
+  "url": "jdbc:mysql://localhost:3306/testingshelly",
+  "username": "root",
+  "password": "root",
+  "driver": "com.mysql.cj.jdbc.Driver",
+  "pool": {
+    "max_size": 10,
+    "timeout": 30
+  }
+}
