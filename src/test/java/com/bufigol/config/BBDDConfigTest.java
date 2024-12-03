@@ -6,29 +6,29 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class BBDDConfigTest {
+public class BBDDConfigTest {
     private BBDDConfig bbddConfig;
     @TempDir
     Path tempDir;
+    private Path configPath;
 
     private static final String VALID_CONFIG = """
-            {
-                "url": "jdbc:mysql://localhost:3306/testdb",
-                "username": "testuser",
-                "password": "testpass",
-                "driver": "com.mysql.cj.jdbc.Driver",
-                "pool": {
-                    "max_size": 10,
-                    "timeout": 30
-                }
+        {
+            "url": "jdbc:mysql://localhost:3306/testdb",
+            "username": "testuser",
+            "password": "testpass",
+            "driver": "com.mysql.cj.jdbc.Driver",
+            "pool": {
+                "max_size": 10,
+                "timeout": 30
             }
-            """;
+        }
+        """;
 
     private static final String INVALID_CONFIG = """
             {
@@ -41,11 +41,11 @@ class BBDDConfigTest {
     @BeforeEach
     void setUp() throws Exception {
         // Crear un archivo de configuración temporal válido
-        File configFile = tempDir.resolve("database.json").toFile();
-        try (FileWriter writer = new FileWriter(configFile)) {
+        configPath = tempDir.resolve("database.json");
+        try (FileWriter writer = new FileWriter(configPath.toFile())) {
             writer.write(VALID_CONFIG);
         }
-        bbddConfig = new BBDDConfig("database.json");
+        bbddConfig = new BBDDConfig(configPath);
     }
 
     @AfterEach
@@ -63,8 +63,7 @@ class BBDDConfigTest {
     void loadConfig_InvalidConfiguration_ThrowsException() {
         // Crear archivo con configuración inválida
         assertThrows(ConfigurationException.class, () -> {
-            File configFile = tempDir.resolve("database.json").toFile();
-            try (FileWriter writer = new FileWriter(configFile)) {
+            try (FileWriter writer = new FileWriter(configPath.toFile())) {
                 writer.write(INVALID_CONFIG);
             }
             bbddConfig.loadConfig();
@@ -94,9 +93,8 @@ class BBDDConfigTest {
         String originalUrl = bbddConfig.getDatabaseUrl();
 
         // Modificar el archivo de configuración
-        File configFile = tempDir.resolve("database.json").toFile();
         String updatedConfig = VALID_CONFIG.replace("testdb", "newdb");
-        try (FileWriter writer = new FileWriter(configFile)) {
+        try (FileWriter writer = new FileWriter(configPath.toFile())) {
             writer.write(updatedConfig);
         }
 

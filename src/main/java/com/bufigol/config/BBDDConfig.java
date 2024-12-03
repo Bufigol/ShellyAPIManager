@@ -4,8 +4,13 @@ import com.bufigol.expeciones.ConfigurationException;
 import com.bufigol.interfaces.INT_Configuracion;
 import com.bufigol.utils.JSONUtils;
 
-import java.net.URL;
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -30,7 +35,7 @@ public class BBDDConfig implements INT_Configuracion {
     private static final String POOL_TIMEOUT = "timeout";
     private static final String DB_DRIVER = "driver";
 
-    private final String configPath;
+    private final Path configPath;
     private final JSONUtils jsonUtils;
     private final ReadWriteLock lock;
     private boolean loaded;
@@ -40,38 +45,66 @@ public class BBDDConfig implements INT_Configuracion {
      * Constructor por defecto que inicializa la configuración con la ruta estándar.
      */
     public BBDDConfig() {
-        URL resourceUrl = BBDDConfig.class.getClassLoader().getResource(CONFIG_FOLDER + File.separator + CONFIG_FILE_NAME);
-        if (resourceUrl == null) {
-            throw new ConfigurationException("No se pudo encontrar el archivo de configuración de base de datos en el classpath");
-        }
-        this.configPath = resourceUrl.getPath();
+        this.configPath = resolveDefaultConfigPath();
         this.jsonUtils = JSONUtils.getInstance();
         this.lock = new ReentrantReadWriteLock();
         this.configuration = new HashMap<>();
         this.loaded = false;
+        createConfigDirectoryIfNeeded();
     }
 
     /**
-     * Constructor que permite especificar un nombre de archivo personalizado.
-     * @param configFileName nombre del archivo de configuración
+     * Constructor que permite especificar una ruta de archivo personalizada.
+     * @param configPath Path al archivo de configuración
      */
-    public BBDDConfig(String configFileName) {
-        URL resourceUrl = BBDDConfig.class.getClassLoader().getResource(CONFIG_FOLDER + File.separator + configFileName);
-        if (resourceUrl == null) {
-            throw new ConfigurationException("No se pudo encontrar el archivo " + configFileName + " en el classpath");
-        }
-        this.configPath = resourceUrl.getPath();
+    public BBDDConfig(Path configPath) {
+        this.configPath = configPath;
         this.jsonUtils = JSONUtils.getInstance();
         this.lock = new ReentrantReadWriteLock();
         this.configuration = new HashMap<>();
         this.loaded = false;
+        createConfigDirectoryIfNeeded();
+    }
+
+    private Path resolveDefaultConfigPath() {
+        try {
+            // Intenta obtener el recurso del classpath
+            URL resourceUrl = BBDDConfig.class.getClassLoader()
+                    .getResource(CONFIG_FOLDER + "/" + CONFIG_FILE_NAME);
+
+            if (resourceUrl != null) {
+                try {
+                    return Paths.get(resourceUrl.toURI());
+                } catch (URISyntaxException e) {
+                    // Si falla la conversión URI, intentar con ruta relativa
+                    return Paths.get(CONFIG_FOLDER, CONFIG_FILE_NAME);
+                }
+            }
+
+            // Si no encuentra el recurso, usar ruta relativa
+            return Paths.get(CONFIG_FOLDER, CONFIG_FILE_NAME);
+        } catch (Exception e) {
+            // En caso de cualquier error, usar ruta relativa
+            return Paths.get(CONFIG_FOLDER, CONFIG_FILE_NAME);
+        }
+    }
+
+    private void createConfigDirectoryIfNeeded() {
+        try {
+            Path parentDir = configPath.getParent();
+            if (parentDir != null && !Files.exists(parentDir)) {
+                Files.createDirectories(parentDir);
+            }
+        } catch (IOException e) {
+            throw new ConfigurationException("No se pudo crear el directorio de configuración", e);
+        }
     }
 
     @Override
     public void loadConfig() throws ConfigurationException {
         lock.writeLock().lock();
         try {
-            configuration = jsonUtils.readConfigFile(configPath);
+            configuration = jsonUtils.readConfigFile(configPath.toString());
             validateConfiguration();
             loaded = true;
         } catch (Exception e) {
@@ -116,7 +149,7 @@ public class BBDDConfig implements INT_Configuracion {
 
     @Override
     public String getConfigPath() {
-        return configPath;
+        return configPath.toString();
     }
 
     @Override
@@ -124,7 +157,7 @@ public class BBDDConfig implements INT_Configuracion {
         lock.writeLock().lock();
         try {
             validateConfiguration();
-            jsonUtils.saveConfigFile(configuration, configPath);
+            jsonUtils.saveConfigFile(configuration, configPath.toString());
         } finally {
             lock.writeLock().unlock();
         }
@@ -143,11 +176,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Obtiene la URL de conexión a la base de datos.
-     * @return String con la URL de conexión
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     public String getDatabaseUrl() throws ConfigurationException {
         lock.readLock().lock();
         try {
@@ -157,11 +185,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Obtiene el nombre de usuario para la conexión.
-     * @return String con el nombre de usuario
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     public String getUsername() throws ConfigurationException {
         lock.readLock().lock();
         try {
@@ -171,11 +194,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Obtiene la contraseña para la conexión.
-     * @return String con la contraseña
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     public String getPassword() throws ConfigurationException {
         lock.readLock().lock();
         try {
@@ -185,11 +203,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Obtiene el driver de la base de datos.
-     * @return String con el nombre del driver
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     public String getDriver() throws ConfigurationException {
         lock.readLock().lock();
         try {
@@ -199,11 +212,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Obtiene el tamaño máximo del pool de conexiones.
-     * @return int con el tamaño máximo del pool
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     @SuppressWarnings("unchecked")
     public int getPoolMaxSize() throws ConfigurationException {
         lock.readLock().lock();
@@ -212,17 +220,14 @@ public class BBDDConfig implements INT_Configuracion {
             if (poolConfig == null || !poolConfig.containsKey(POOL_MAX_SIZE)) {
                 throw new ConfigurationException("Configuración del pool no encontrada");
             }
-            return Integer.parseInt(poolConfig.get(POOL_MAX_SIZE).toString());
+            // Convertir el número a double primero y luego a int
+            double value = Double.parseDouble(poolConfig.get(POOL_MAX_SIZE).toString());
+            return (int) value;
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    /**
-     * Obtiene el timeout del pool de conexiones en segundos.
-     * @return int con el timeout en segundos
-     * @throws ConfigurationException si la configuración no está cargada o el valor no existe
-     */
     @SuppressWarnings("unchecked")
     public int getPoolTimeout() throws ConfigurationException {
         lock.readLock().lock();
@@ -231,29 +236,25 @@ public class BBDDConfig implements INT_Configuracion {
             if (poolConfig == null || !poolConfig.containsKey(POOL_TIMEOUT)) {
                 throw new ConfigurationException("Configuración del pool no encontrada");
             }
-            return Integer.parseInt(poolConfig.get(POOL_TIMEOUT).toString());
+            // Convertir el número a double primero y luego a int
+            double value = Double.parseDouble(poolConfig.get(POOL_TIMEOUT).toString());
+            return (int) value;
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    /**
-     * Valida que la configuración contenga todos los campos requeridos.
-     * @throws ConfigurationException si falta algún campo requerido o el formato es inválido
-     */
     private void validateConfiguration() throws ConfigurationException {
         if (configuration == null) {
             throw new ConfigurationException("La configuración es nula");
         }
 
-        // Validar campos obligatorios
         validateField(DB_URL, "URL de la base de datos");
         validateField(DB_USERNAME, "Nombre de usuario");
         validateField(DB_PASSWORD, "Contraseña");
         validateField(DB_DRIVER, "Driver de la base de datos");
         validateField(POOL_CONFIG, "Configuración del pool");
 
-        // Validar configuración del pool
         @SuppressWarnings("unchecked")
         Map<String, Object> poolConfig = (Map<String, Object>) configuration.get(POOL_CONFIG);
         if (poolConfig == null || !poolConfig.containsKey(POOL_MAX_SIZE) || !poolConfig.containsKey(POOL_TIMEOUT)) {
@@ -261,12 +262,6 @@ public class BBDDConfig implements INT_Configuracion {
         }
     }
 
-    /**
-     * Valida un campo específico de la configuración.
-     * @param fieldName nombre del campo a validar
-     * @param fieldDescription descripción del campo para el mensaje de error
-     * @throws ConfigurationException si el campo no existe o es nulo
-     */
     private void validateField(String fieldName, String fieldDescription) throws ConfigurationException {
         if (!configuration.containsKey(fieldName) || configuration.get(fieldName) == null) {
             throw new ConfigurationException("Falta el campo requerido: " + fieldDescription);
